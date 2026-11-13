@@ -1,0 +1,19 @@
+{
+  "name": "client-name",
+  "environments": {
+    "staging": { "url": "https://example.webflow.io", "type": "staging" },
+    "live": { "url": "https://www.example.com", "type": "live" },
+    "local": { "serve": "../path/to/dist", "type": "staging" }
+  },
+  "maxPages": 150,
+  "exclude": [],
+  "ignoreSelectors": [],
+  "customWords": [],
+  "expectedEmailDomains": [],
+  "expectedPhones": [],
+  "badTitlePatterns": [],
+  "seasonal": [],
+  "bookingLinks": [],
+  "forms": [],
+  "rules": []
+}

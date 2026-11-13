@@ -1,0 +1,43 @@
+{
+  "name": "mudhen",
+  "environments": {
+    "staging": { "url": "https://mudhen-x-metriq-2023-fbe6844fe88ff8a1da.webflow.io", "type": "staging" },
+    "live": { "url": "https://www.mudhenclayandart.com", "type": "live" }
+  },
+  "maxPages": 120,
+  "customWords": [
+    "Mud Hen", "Tustin", "handbuilding", "Handbuilding", "underglaze", "underglazes", "bisque", "bisqueware",
+    "greenware", "kiln", "kilns", "glazes", "PYOP", "Sage Oak", "Homeschool", "homeschool", "homeschooling",
+    "NCECA", "keepsake", "keepsakes", "Clay Date"
+  ],
+  "expectedEmailDomains": ["mudhenclayandart.com", "gmail.com"],
+  "expectedPhones": [],
+  "badTitlePatterns": ["^Current\\s*-"],
+  "severity": { "spelling": "fail", "capitalization": "fail" },
+  "seasonal": [
+    { "pattern": "summer camp", "months": [1, 2, 3, 4, 5, 6, 7, 8], "message": "Summer camp content showing outside camp season. Check dates and whether it should be up." },
+    { "pattern": "valentine", "months": [1, 2], "message": "Valentine's content showing outside January and February." },
+    { "pattern": "holiday (handbuilding|class|gift|workshop)", "months": [10, 11, 12], "message": "Holiday promo showing outside October to December." }
+  ],
+  "bookingLinks": [
+    {
+      "match": "acuityscheduling\\.com|\\.as\\.me",
+      "warnPatterns": [
+        {
+          "pattern": "appointmentType=category(%3A|:)",
+          "message": "Category link: Acuity puts the category name in this URL, so it breaks when Jen renames the category. Prefer an appointment-type ID link, and re-run QA after any Acuity rename."
+        }
+      ],
+      "brokenTextPatterns": ["no appointment types", "page not found", "no longer available", "does not exist", "isn't available"]
+    }
+  ],
+  "forms": [
+    { "match": "event", "required": ["name", "email", "phone"] }
+  ],
+  "rules": [
+    { "id": "waiver-state", "type": "forbidText", "pattern": "\\bArizona\\b", "severity": "fail", "message": "Mentions Arizona. The waiver should cite California law." },
+    { "id": "covid-clause", "type": "forbidText", "pattern": "\\bCOVID", "severity": "warn", "message": "COVID language found. Confirm with Jen that it still belongs." },
+    { "id": "placeholder-product", "type": "forbidText", "pattern": "piggy bank", "pages": "shop|product", "severity": "warn", "message": "The piggy bank placeholder product is still listed. Remove it or replace it with a real product." },
+    { "id": "old-camp-flyer", "type": "forbidHref", "pattern": "flyer.*\\.pdf", "severity": "warn", "message": "A flyer PDF is linked. Check that it shows this season's dates (last year's flyer stayed up in Feb 2026)." }
+  ]
+}
