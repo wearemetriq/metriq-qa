@@ -20,12 +20,27 @@ function stripNonWords(text) {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\b[\w.+-]+@[\w-]+(\.[\w-]+)+\b/g, ' ')
     .replace(/\b[\w-]+\.(com|org|net|io|co|us|edu|gov|me|app|dev)\b\S*/gi, ' ')
-    .replace(/[@#][\w]+/g, ' ');
+    .replace(/[@#][\w]+/g, ' ')
+    .replace(/(\p{L})\((s|es|ies|ren)\)/giu, '$1')   // child(ren), class(es)
+    .replace(/\S+(\.\.\.|…)\s*$/u, ' ');            // the last word of cut-off text ("and we are joi...")
 }
 
+// Prefixes that are fine on their own before a hyphen ("Pre-Order", "co-op", "non-toxic").
+const PREFIXES = new Set(['pre', 'post', 'non', 'multi', 'semi', 'anti', 'mid', 'sub', 'self', 'inter', 'over', 'under', 'mini', 'micro', 'mega', 'ultra', 'extra', 'co', 're', 'un', 'bi', 'tri', 'ex', 'e']);
+
 function wordsOf(text) {
-  return stripNonWords(text).match(/[A-Za-z][A-Za-z'’]*[A-Za-z]/g) || [];
+  const out = [];
+  for (const compound of stripNonWords(text).match(/\p{L}[\p{L}'’-]*\p{L}/gu) || []) {
+    const parts = compound.split('-').filter(Boolean);
+    parts.forEach((part, i) => {
+      if (i < parts.length - 1 && PREFIXES.has(part.toLowerCase())) return;
+      out.push(part);
+    });
+  }
+  return out;
 }
+
+const plain = (w) => w.normalize('NFD').replace(/\p{M}/gu, ''); // fiancé -> fiance
 
 export function checkSpelling(pages, speller, cfg) {
   const { spell, custom } = speller;
@@ -61,7 +76,8 @@ export function checkSpelling(pages, speller, cfg) {
           continue;
         }
         if (/^[A-Z]+$/.test(w) && w.length <= 6) continue; // acronyms
-        const ok = spell.correct(w) || spell.correct(lower) || spell.correct(w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+        const ok = spell.correct(w) || spell.correct(lower) || spell.correct(w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) ||
+          (plain(w) !== w && (spell.correct(plain(w)) || spell.correct(plain(lower))));
         if (!ok) add(bad, w, p.url, source, snippetAround(text, w));
       }
     }

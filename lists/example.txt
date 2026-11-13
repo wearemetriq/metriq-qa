@@ -1,0 +1,9 @@
+# One address per line. Lines starting with # are notes.
+# Run it with:  node bin/metriq-qa.js batch lists\example.txt
+# Or drag this file onto QA-all.cmd.
+
+mudhenclayandart.com
+https://mudhen-x-metriq-2023-fbe6844fe88ff8a1da.webflow.io
+
+# Add --only to check just one page instead of the whole site:
+# https://www.mudhenclayandart.com/events --only

@@ -17,6 +17,8 @@ async function makeImages() {
   await solid(1600, 1200, '#b98b5e').jpeg().toFile(path.join(IMG, 'clean.jpg'));
   await solid(200, 150, '#6b8f71').jpeg().toFile(path.join(IMG, 'tiny.jpg'));
   await solid(900, 600, '#8a6f9e').jpeg().toFile(path.join(IMG, 'no-alt.jpg'));
+  await solid(182, 182, '#2f4b7c').jpeg().toFile(path.join(IMG, 'logo-182.jpg'));   // logo drawn smaller inside a wide "contain" frame
+  await solid(300, 300, '#9c6644').jpeg().toFile(path.join(IMG, 'badge-300.jpg'));  // shown 1px bigger than the file
   // A landscape photo saved with "rotate 90" in its metadata, the way phones save portrait shots.
   await solid(1200, 800, '#c7a26b').jpeg().withMetadata({ orientation: 6 }).toFile(path.join(IMG, 'rotated.jpg'));
   // A noisy photo saved at high quality so it weighs well over 500 KB.
@@ -93,6 +95,25 @@ const aboutNoise = result.findings.filter((f) => /\/about$/.test(f.page) && f.se
 console.log(`\nClean About page: ${aboutNoise.length ? aboutNoise.length + ' unexpected finding(s)' : 'no false alarms'}`);
 aboutNoise.forEach((f) => console.log(`   ${f.severity} ${f.check}: ${f.message}`));
 if (aboutNoise.length) failures++;
+// False alarms seen on a real site must stay gone.
+const noise = [
+  ['contain logo not called blurry', (f) => /^Blurry: logo-182/.test(f.message)],
+  ['1px bigger image not called blurry', (f) => /^Blurry: badge-300/.test(f.message)],
+  ['empty store image not called broken', (f) => /Broken image/.test(f.message) && /order-confirmation/.test(f.page)],
+  ['"Pre" in Pre-Order not a typo', (f) => f.check === 'spelling' && f.word === 'Pre'],
+  ['"ren" in child(ren) not a typo', (f) => f.check === 'spelling' && f.word === 'ren'],
+  ['"fiancé" not a typo', (f) => f.check === 'spelling' && /^fianc/.test(f.word)],
+  ['cut-off alt text not a typo', (f) => f.check === 'spelling' && f.word === 'Saturda']
+];
+for (const [label, bad] of noise) {
+  const hit = result.findings.find(bad);
+  console.log(`${hit ? 'NOISY  ' : 'quiet  '} ${label}${hit ? `: ${hit.message}` : ''}`);
+  if (hit) failures++;
+}
+const emptySlot = result.findings.some((f) => f.severity === 'info' && /Empty image slot/.test(f.message) && /order-confirmation/.test(f.page));
+console.log(`${emptySlot ? 'noted  ' : 'MISSED '} empty store image noted as normal`);
+if (!emptySlot) failures++;
+
 // Admin and logout links on About must never be opened (they could change content on a signed-in site).
 const unsafeTouched = result.pages.some((p) => /wp-admin|logout/.test(p.url)) || result.findings.some((f) => /wp-admin|logout/.test(`${f.detail || ''} ${f.message}`));
 console.log(`Admin and logout links: ${unsafeTouched ? 'OPENED (should be skipped)' : 'skipped'}`);

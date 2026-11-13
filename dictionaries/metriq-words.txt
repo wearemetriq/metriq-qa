@@ -55,3 +55,24 @@ Ste
 Tues
 Thurs
 Sept
+# Everyday words the US dictionary is missing (found on client sites)
+handprint
+handprints
+footprint
+footprints
+impactful
+headshot
+headshots
+storytime
+lightbox
+extruder
+extruders
+handbuilt
+premade
+flyer
+flyers
+cancelling
+cancelled
+enforceability
+releasee
+releasees
