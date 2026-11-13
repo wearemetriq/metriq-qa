@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 
 // Try Playwright's own Chromium first, then the Chrome or Edge already on the machine.
 // On Windows, Edge is always present, so the tool runs even before `npx playwright install`.
-export async function launchBrowser() {
+export async function launchBrowser({ headless = true } = {}) {
   const attempts = [
     process.env.QA_BROWSER_CHANNEL ? { channel: process.env.QA_BROWSER_CHANNEL } : null,
     {},
@@ -12,7 +12,7 @@ export async function launchBrowser() {
   let lastErr;
   for (const opts of attempts) {
     try {
-      return await chromium.launch({ headless: true, ...opts });
+      return await chromium.launch({ headless, ...opts });
     } catch (err) {
       lastErr = err;
     }

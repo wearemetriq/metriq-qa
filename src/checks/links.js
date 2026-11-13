@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { normalizeUrl } from '../crawl.js';
 import { toRegex, ensureDir, slugForUrl, normalizeSpace } from '../util.js';
+import { UNSAFE_LINK } from '../sites.js';
 
 async function statusOf(request, url) {
   try {
@@ -34,6 +35,7 @@ export async function checkLinks(pages, cfg, { context, baseUrl, outDir, log }) 
     const internal = new URL(url).origin === origin;
     if (!internal && !cfg.checks.externalLinks) continue;
     if (!internal && skip.some((r) => r.test(url))) continue;
+    if (UNSAFE_LINK.test(url)) continue; // admin, logout and action links are never opened
     const status = crawled.has(url) ? crawled.get(url) : await statusOf(request, url);
     checked++;
     if (status === 'error' || status === 'timeout' || status >= 400) {

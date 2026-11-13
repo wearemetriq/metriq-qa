@@ -93,6 +93,10 @@ const aboutNoise = result.findings.filter((f) => /\/about$/.test(f.page) && f.se
 console.log(`\nClean About page: ${aboutNoise.length ? aboutNoise.length + ' unexpected finding(s)' : 'no false alarms'}`);
 aboutNoise.forEach((f) => console.log(`   ${f.severity} ${f.check}: ${f.message}`));
 if (aboutNoise.length) failures++;
+// Admin and logout links on About must never be opened (they could change content on a signed-in site).
+const unsafeTouched = result.pages.some((p) => /wp-admin|logout/.test(p.url)) || result.findings.some((f) => /wp-admin|logout/.test(`${f.detail || ''} ${f.message}`));
+console.log(`Admin and logout links: ${unsafeTouched ? 'OPENED (should be skipped)' : 'skipped'}`);
+if (unsafeTouched) failures++;
 if (result.pass) { console.log('Gate should FAIL on this site but passed'); failures++; }
 else console.log('Gate correctly FAILED');
 

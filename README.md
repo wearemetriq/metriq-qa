@@ -30,40 +30,62 @@ Each run crawls the site, runs about 30 automated checks, takes screenshots at p
 
 ## Setup on Windows (one time)
 
-Open PowerShell in the folder that holds `metriq-qa`:
+Open PowerShell:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS      # skip if `node -v` already shows v20 or newer
-cd metriq-qa
+cd D:\software\metriq-qa
 npm install
 npx playwright install chromium       # optional: without it, the tool uses Edge or Chrome
-npm test                              # self-test against a site with 29 planted problems
+npm test                              # self-test: 29 planted problems, plus the URL and sign-in workflow
 ```
 
 ## Everyday use
 
+The quickest way: double-click `QA.cmd`, paste an address, press Enter. The report opens when it finishes.
+
+From PowerShell, just give it an address. It checks the whole site from there:
+
 ```powershell
-# Before sending a staging link to a client
-node bin/metriq-qa.js run --config sites/mudhen.json --env staging
+cd D:\software\metriq-qa
 
-# After a small edit, check just the pages you touched
-node bin/metriq-qa.js run --config sites/mudhen.json --env staging --pages /,/events
+# Any site, staging or live
+node bin/metriq-qa.js mudhenclayandart.com
+node bin/metriq-qa.js https://mudhen-x-metriq-2023-fbe6844fe88ff8a1da.webflow.io
 
-# Right after publishing, confirm the live site
-node bin/metriq-qa.js run --config sites/mudhen.json --env live
+# Just one page (after a small edit)
+node bin/metriq-qa.js https://www.mudhenclayandart.com/events --only
+
+# A local dev server or WordPress on Local
+node bin/metriq-qa.js localhost:3000
+node bin/metriq-qa.js http://mysite.local
 
 # A local build folder (static export, dist/)
 node bin/metriq-qa.js run --serve C:\path\to\dist
 
-# A local dev server or WordPress on Local
-node bin/metriq-qa.js run --url http://localhost:3000
-node bin/metriq-qa.js run --url http://mysite.local
-
 # Once you've reviewed a run and it looks right, approve its screenshots as the new reference
-node bin/metriq-qa.js run --config sites/mudhen.json --env staging --update-baseline
+node bin/metriq-qa.js mudhenclayandart.com --update-baseline
 ```
 
-The report opens from `reports\<site>-<env>-<time>\report.html`. The process exits with code 0 on PASS and 1 on FAIL, so it can block a deploy script or a scheduled task.
+How it decides what rules to use:
+
+- If the address belongs to a client with a `sites\<client>.json` (staging or live URL), that client's rules apply automatically: custom words, booking links, never-again rules.
+- Any other address gets the standard checks, and the report is named after the site.
+- Preview hosts (webflow.io, vercel.app, netlify.app, staging.*, localhost) count as staging. Everything else counts as live, which makes a "noindex" tag a failure. Override with `--env-type staging` or `--env-type live`.
+
+Pages behind a password or login (Webflow site password, a WordPress draft you can only see signed in):
+
+```powershell
+node bin/metriq-qa.js login https://clientname.webflow.io
+```
+
+A browser window opens. Sign in, come back to PowerShell and press Enter. The session is saved in `auth\` (never pushed to GitHub) and every run against that site uses it. Delete the file to sign out. Google sign-in may refuse automated browsers; site passwords and WordPress logins work.
+
+The tool never opens admin, logout or action links (`/wp-admin`, `wp-login.php`, `?action=`, `/logout` and similar), so a signed-in run can't log you out or change content.
+
+The older form still works: `node bin/metriq-qa.js run --config sites/mudhen.json --env staging`.
+
+The report opens on its own when a run finishes (add `--no-open` to skip that). It lives in `reports\<site>-<env>-<time>\report.html`. The process exits with code 0 on PASS and 1 on FAIL, so it can block a deploy script or a scheduled task.
 
 The rule: anything under "Fix before sending" gets fixed and re-run before a client sees the site. "Review" items get a look. Then do the AI review.
 
@@ -114,7 +136,8 @@ It bakes the phone's rotation into the pixels (so no platform can show it sidewa
 
 ## Limits
 
-- It checks what a visitor's browser receives. Webflow's password-protected staging uses a login form, not basic auth, so either remove the password while checking or check the published staging URL.
+- It checks what a visitor's browser receives. For password-protected or signed-in pages, run `login` first (see Everyday use).
+- It runs its own browser, not your everyday Chrome, so it doesn't see your Chrome sign-ins or extensions. `login` covers sites that need a sign-in.
 - It can't confirm form notification emails arrive, hover states and interactions feel right, or the copy sounds like the client. Those stay on the hand checklist.
 - Background images set in CSS aren't checked for blur; the screenshot review catches those.
 - Booking pages are rendered and screenshotted, but whether each one lands on the right class needs a look. Tune `brokenTextPatterns` once you've seen what a broken link looks like in each provider.

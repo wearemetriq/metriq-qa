@@ -2,6 +2,7 @@ import path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { extractPage, autoScroll } from './extract.js';
 import { ensureDir, slugForUrl, toRegex, sleep } from './util.js';
+import { UNSAFE_LINK } from './sites.js';
 
 const SKIP_EXT = /\.(pdf|jpe?g|png|gif|webp|avif|svg|zip|docx?|xlsx?|pptx?|mp4|mov|mp3|ics|csv)$/i;
 const FREEZE_CSS = `*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important}`;
@@ -19,7 +20,7 @@ export function normalizeUrl(u, base) {
   }
 }
 
-export async function crawlSite({ browser, cfg, baseUrl, outDir, pagesOnly, maxPages, httpCredentials, log }) {
+export async function crawlSite({ browser, cfg, baseUrl, outDir, pagesOnly, maxPages, httpCredentials, storageState, log }) {
   const origin = new URL(baseUrl).origin;
   const exclude = (cfg.exclude || []).map((p) => toRegex(p));
   const isExcluded = (u) => exclude.some((r) => r.test(new URL(u).pathname + new URL(u).search));
@@ -31,6 +32,7 @@ export async function crawlSite({ browser, cfg, baseUrl, outDir, pagesOnly, maxP
   const context = await browser.newContext({
     viewport: { width: desktop, height: 900 },
     httpCredentials: httpCredentials || undefined,
+    storageState: storageState || undefined,
     ignoreHTTPSErrors: true,
     reducedMotion: 'reduce',
     userAgent: undefined
@@ -53,7 +55,7 @@ export async function crawlSite({ browser, cfg, baseUrl, outDir, pagesOnly, maxP
   const enqueue = (u) => {
     const n = normalizeUrl(u, baseUrl);
     if (!n || seen.has(n)) return;
-    if (new URL(n).origin !== origin || SKIP_EXT.test(new URL(n).pathname) || isExcluded(n)) return;
+    if (new URL(n).origin !== origin || SKIP_EXT.test(new URL(n).pathname) || isExcluded(n) || UNSAFE_LINK.test(n)) return;
     seen.add(n);
     queue.push(n);
   };
@@ -104,7 +106,7 @@ export async function crawlSite({ browser, cfg, baseUrl, outDir, pagesOnly, maxP
       await autoScroll(page);
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
       rec.data = await page.evaluate(extractPage, { ignoreSelectors: cfg.ignoreSelectors || [], ruleSelectors });
-      for (const l of rec.data.links) if (l.abs) enqueue(l.abs);
+      if (!pagesOnly?.length) for (const l of rec.data.links) if (l.abs) enqueue(l.abs); // --pages and --only stay on the pages asked for
 
       if (cfg.checks.a11y) {
         try {
