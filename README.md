@@ -37,7 +37,7 @@ winget install OpenJS.NodeJS.LTS      # skip if `node -v` already shows v20 or n
 cd D:\software\metriq-qa
 npm install
 npx playwright install chromium       # optional: without it, the tool uses Edge or Chrome
-npm test                              # self-test: 29 planted problems, plus the URL and sign-in workflow
+npm test                              # self-test: 29 planted problems, the URL and sign-in workflow, and batch mode
 ```
 
 ## Everyday use
@@ -88,6 +88,21 @@ The older form still works: `node bin/metriq-qa.js run --config sites/mudhen.jso
 The report opens on its own when a run finishes (add `--no-open` to skip that). It lives in `reports\<site>-<env>-<time>\report.html`. The process exits with code 0 on PASS and 1 on FAIL, so it can block a deploy script or a scheduled task.
 
 The rule: anything under "Fix before sending" gets fixed and re-run before a client sees the site. "Review" items get a look. Then do the AI review.
+
+## Checking many sites at once (batch)
+
+Double-click `QA-all.cmd` to check every client in `sites\` on their live addresses. Each site runs in turn, one site failing to load never stops the rest, and one summary page opens at the end with PASS or FAIL per site, the main problems and a link to each full report.
+
+```powershell
+node bin/metriq-qa.js batch                      # every client in sites\, live addresses
+node bin/metriq-qa.js batch --env staging        # every client, staging addresses
+node bin/metriq-qa.js batch lists\weekly.txt     # every address in a list file
+node bin/metriq-qa.js batch site-one.com site-two.com
+```
+
+A list file is plain text with one address per line. Lines starting with `#` are notes, and `--only` after an address checks just that page. See `lists\example.txt`. You can also drag a list file onto `QA-all.cmd`.
+
+Clients without an address for the chosen environment show as skipped. The summary lives in `reports\batch-<time>\summary.html`, with each site's full report in the same folder. Exit code is 0 only if every site passed.
 
 ## The AI review step
 

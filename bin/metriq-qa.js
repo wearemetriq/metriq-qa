@@ -5,6 +5,7 @@ import readline from 'node:readline';
 import { spawn } from 'node:child_process';
 import { runQa, initSite, saveLogin } from '../src/run.js';
 import { intakeImages } from '../src/images-intake.js';
+import { resolveTargets, runBatch } from '../src/batch.js';
 import { looksLikeUrl } from '../src/sites.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,6 +16,10 @@ Usage
   metriq-qa <url>                                 check a whole site from any address
   metriq-qa <url> --only                          check just that one page
   metriq-qa login <url>                           sign in once (site password, WordPress login) so runs can see gated pages
+  metriq-qa batch                                 check every client in sites/ (live addresses) and write one summary
+  metriq-qa batch --env staging                   same, using each client's staging address
+  metriq-qa batch <list.txt>                      check every address in a text file (one per line, --only allowed)
+  metriq-qa batch <url> <url> ...                 check these addresses
   metriq-qa run --config sites/<client>.json [--env staging|live] [options]
   metriq-qa run --serve ./dist [options]          check a folder of built files
   metriq-qa images <inFolder> <outFolder> [--max 2400] [--min-width 1600] [--format webp|avif|jpg]
@@ -101,6 +106,22 @@ try {
     });
     if (!args.noOpen && process.stdout.isTTY) openFile(result.file);
     process.exit(result.pass ? 0 : 1);
+  } else if (cmd === 'batch') {
+    const targets = resolveTargets(args._.slice(1), { env: typeof args.env === 'string' ? args.env : 'live' });
+    if (!targets.length) throw new Error('Nothing to check. Add a client file in sites\\, or pass a list file or addresses.');
+    console.log(`Checking ${targets.length} site${targets.length === 1 ? '' : 's'}. Each one takes a minute or more.\n`);
+    const batch = await runBatch(targets, {
+      out: args.out,
+      runOptions: {
+        noA11y: !!args.noA11y,
+        noExternal: !!args.noExternal,
+        noScreens: !!args.noScreens,
+        maxPages: args.maxPages ? Number(args.maxPages) : undefined,
+        updateBaseline: !!args.updateBaseline
+      }
+    });
+    if (!args.noOpen && process.stdout.isTTY) openFile(batch.file);
+    process.exit(batch.allPass ? 0 : 1);
   } else if (cmd === 'login') {
     const url = args._[1];
     if (!url) throw new Error('Usage: metriq-qa login <url>');
