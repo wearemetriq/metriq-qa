@@ -2,7 +2,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import readline from 'node:readline';
-import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';
 import { runQa, initSite, saveLogin } from '../src/run.js';
 import { intakeImages } from '../src/images-intake.js';
 import { resolveTargets, runBatch } from '../src/batch.js';
@@ -67,11 +68,23 @@ if (looksLikeUrl(cmd)) {
   args.url = args._[1];
 }
 
+// Ubuntu inside Windows (WSL): open reports in the Windows browser.
+function isWsl() {
+  if (process.platform !== 'linux') return false;
+  if (process.env.WSL_DISTRO_NAME) return true;
+  try { return /microsoft/i.test(fs.readFileSync('/proc/version', 'utf8')); } catch { return false; }
+}
+
 function openFile(file) {
-  const opener = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', `"${file}"`]]
-    : process.platform === 'darwin' ? ['open', [file]] : ['xdg-open', [file]];
   try {
-    spawn(opener[0], opener[1], { detached: true, stdio: 'ignore', windowsVerbatimArguments: process.platform === 'win32' }).unref();
+    if (isWsl()) {
+      const winPath = execFileSync('wslpath', ['-w', file]).toString().trim();
+      spawn('explorer.exe', [winPath], { detached: true, stdio: 'ignore' }).on('error', () => {}).unref();
+      return;
+    }
+    const opener = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', `"${file}"`]]
+      : process.platform === 'darwin' ? ['open', [file]] : ['xdg-open', [file]];
+    spawn(opener[0], opener[1], { detached: true, stdio: 'ignore', windowsVerbatimArguments: process.platform === 'win32' }).on('error', () => {}).unref();
   } catch { /* opening is a convenience only */ }
 }
 

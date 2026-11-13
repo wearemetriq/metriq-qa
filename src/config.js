@@ -36,6 +36,8 @@ export const DEFAULTS = {
   image: {
     maxKB: 500,
     minScaleWarn: 1.5,         // source pixels per CSS pixel below this is soft on retina screens
+    upscaleWarn: 1.03,         // shown more than 3% bigger than the file: review
+    upscaleFail: 1.15,         // shown more than 15% bigger than the file: blurry, fix
     cropWarn: 0.45,            // object-fit: cover cropping more than 45% of the image
     stretchWarn: 0.06          // object-fit: fill distorting the aspect ratio by more than 6%
   },

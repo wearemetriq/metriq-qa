@@ -5,6 +5,22 @@ const ORIENTATION_TEXT = {
   2: 'mirrored', 3: 'upside down', 4: 'flipped vertically', 5: 'rotated and mirrored', 6: 'rotated 90 degrees', 7: 'rotated and mirrored', 8: 'rotated 270 degrees'
 };
 
+// Store pages that show empty image slots until an order exists.
+const STORE_PAGES = /\/(checkout|order-confirmation|paypal-checkout|cart)(\/|$)/i;
+
+// How much the browser scales the file when drawing it, honoring object-fit.
+// "contain" fits the whole picture inside the frame, so the smaller ratio is what gets drawn.
+function drawnScale(img) {
+  const sx = img.w / img.nw;
+  const sy = img.h / img.nh;
+  switch (img.fit) {
+    case 'contain': return Math.min(sx, sy);
+    case 'scale-down': return Math.min(1, sx, sy);
+    case 'none': return 1;
+    default: return Math.max(sx, sy); // cover, fill
+  }
+}
+
 export async function checkImages(pages, cfg, { request, imageBytes }) {
   const findings = [];
   const placeholder = cfg.placeholderImagePatterns.map((p) => toRegex(p, 'i'));
@@ -30,6 +46,20 @@ export async function checkImages(pages, cfg, { request, imageBytes }) {
       if (reported.has(key)) continue;
       reported.add(key);
 
+      // An <img> with no file at all is an empty CMS or store slot, not a broken file.
+      const emptySlot = !img.rawSrc && (!img.src || img.src === p.url || img.src === p.finalUrl);
+      if (emptySlot) {
+        if (!img.visible) continue;
+        const storePage = STORE_PAGES.test(new URL(p.url).pathname);
+        findings.push({
+          check: 'images',
+          severity: storePage ? 'info' : 'warn',
+          page: p.url,
+          message: storePage ? 'Empty image slot (normal on store pages before an order exists)' : 'Empty image slot: an image element with no image set',
+          detail: storePage ? '' : 'Usually a CMS item or product with no image. Add one, or hide the element when the field is empty.'
+        });
+        continue;
+      }
       if (img.complete && img.nw === 0 && img.src) {
         findings.push({ check: 'images', severity: 'fail', page: p.url, message: `Broken image: ${name}`, detail: img.src });
         continue;
@@ -45,10 +75,13 @@ export async function checkImages(pages, cfg, { request, imageBytes }) {
       }
 
       if (img.visible && img.w >= 120 && img.h >= 60 && img.nw > 0 && img.nh > 0) {
-        const needed = Math.max(img.w / img.nw, img.h / img.nh); // CSS px per source px
+        const needed = drawnScale(img);                            // CSS px per source px, as the browser draws it
         const scale = 1 / needed;                                  // source px per CSS px
-        if (scale < 1) {
-          findings.push({ check: 'images', severity: 'fail', page: p.url, message: `Blurry: ${name} is stretched to ${img.w}x${img.h} from ${img.nw}x${img.nh}`, detail: 'Upload a larger original.' });
+        const pct = Math.round((needed - 1) * 100);
+        if (needed > cfg.image.upscaleFail) {
+          findings.push({ check: 'images', severity: 'fail', page: p.url, message: `Blurry: ${name} is shown ${pct}% bigger than the file (${img.nw}x${img.nh} file in a ${img.w}x${img.h} frame)`, detail: 'Upload a larger original.' });
+        } else if (needed > cfg.image.upscaleWarn) {
+          findings.push({ check: 'images', severity: 'warn', page: p.url, message: `Slightly stretched: ${name} is shown ${pct}% bigger than the file (${img.nw}x${img.nh} file in a ${img.w}x${img.h} frame)`, detail: 'Usually fine on its own; a larger original makes it crisp.' });
         } else if (scale < cfg.image.minScaleWarn) {
           findings.push({ check: 'images', severity: 'warn', page: p.url, message: `Soft on high-res screens: ${name} (${img.nw}px wide shown at ${img.w}px)`, detail: 'Aim for at least twice the displayed width.' });
         }

@@ -40,6 +40,8 @@ npx playwright install chromium       # optional: without it, the tool uses Edge
 npm test                              # self-test: 29 planted problems, the URL and sign-in workflow, and batch mode
 ```
 
+On Ubuntu inside Windows (WSL), the same commands work from `/mnt/d/software/metriq-qa` (run `npm install` from Ubuntu so the right browser files are installed). Reports open in your Windows browser when a run finishes. `QA.cmd` and `QA-all.cmd` are for double-clicking in Windows.
+
 ## Everyday use
 
 The quickest way: double-click `QA.cmd`, paste an address, press Enter. The report opens when it finishes.
